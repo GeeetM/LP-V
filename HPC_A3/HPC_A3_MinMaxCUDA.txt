@@ -1,0 +1,173 @@
+//MinMax using CUDA
+#include <iostream>
+#include <vector>
+
+// CUDA kernel to find the minimum element in an array
+__global__ void cudaMin(const int* arr, int size, int* result) {
+    extern __shared__ int sdata[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    sdata[tid] = (i < size) ? arr[i] : INT_MAX;
+    __syncthreads();
+    
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s && sdata[tid] > sdata[tid + s]) {
+            sdata[tid] = sdata[tid + s];
+        }
+        __syncthreads();
+    }
+    
+    if (tid == 0) {
+        result[blockIdx.x] = sdata[0];
+    }
+}
+
+// CUDA kernel to find the maximum element in an array
+__global__ void cudaMax(const int* arr, int size, int* result) {
+    extern __shared__ int sdata[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    sdata[tid] = (i < size) ? arr[i] : INT_MIN;
+    __syncthreads();
+    
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s && sdata[tid] < sdata[tid + s]) {
+            sdata[tid] = sdata[tid + s];
+        }
+        __syncthreads();
+    }
+    
+    if (tid == 0) {
+        result[blockIdx.x] = sdata[0];
+    }
+}
+
+// CUDA kernel to calculate the sum of elements in an array
+__global__ void cudaSum(const int* arr, int size, int* result) {
+    extern __shared__ int sdata[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    sdata[tid] = (i < size) ? arr[i] : 0;
+    __syncthreads();
+    
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+    
+    if (tid == 0) {
+        result[blockIdx.x] = sdata[0];
+    }
+}
+
+// Host function to find the minimum element in an array using CUDA
+int findMin(const std::vector<int>& arr) {
+    int result;
+    int* cuda_arr;
+    int* cuda_result;
+
+    // Allocate memory on the device
+    cudaMalloc(&cuda_arr, arr.size() * sizeof(int));
+    cudaMalloc(&cuda_result, sizeof(int));
+
+    // Copy input array to device
+    cudaMemcpy(cuda_arr, arr.data(), arr.size() * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Call kernel
+    cudaMin<<<1, arr.size(), arr.size() * sizeof(int)>>>(cuda_arr, arr.size(), cuda_result);
+
+    // Copy result back to host
+    cudaMemcpy(&result, cuda_result, sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(cuda_arr);
+    cudaFree(cuda_result);
+
+    return result;
+}
+
+// Host function to find the maximum element in an array using CUDA
+int findMax(const std::vector<int>& arr) {
+    int result;
+    int* cuda_arr;
+    int* cuda_result;
+
+    // Allocate memory on the device
+    cudaMalloc(&cuda_arr, arr.size() * sizeof(int));
+    cudaMalloc(&cuda_result, sizeof(int));
+
+    // Copy input array to device
+    cudaMemcpy(cuda_arr, arr.data(), arr.size() * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Call kernel
+    cudaMax<<<1, arr.size(), arr.size() * sizeof(int)>>>(cuda_arr, arr.size(), cuda_result);
+
+    // Copy result back to host
+    cudaMemcpy(&result, cuda_result, sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(cuda_arr);
+    cudaFree(cuda_result);
+
+    return result;
+}
+
+// Host function to calculate the sum of elements in an array using CUDA
+int calculateSum(const std::vector<int>& arr) {
+    int result;
+    int* cuda_arr;
+    int* cuda_result;
+
+    // Allocate memory on the device
+    cudaMalloc(&cuda_arr, arr.size() * sizeof(int));
+    cudaMalloc(&cuda_result, sizeof(int));
+
+    // Copy input array to device
+    cudaMemcpy(cuda_arr, arr.data(), arr.size() * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Call kernel
+    cudaSum<<<1, arr.size(), arr.size() * sizeof(int)>>>(cuda_arr, arr.size(), cuda_result);
+
+    // Copy result back to host
+    cudaMemcpy(&result, cuda_result, sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(cuda_arr);
+    cudaFree(cuda_result);
+
+    return result;
+}
+
+int main() {
+    int size;
+    std::cout << "Enter the size of the array: ";
+    std::cin >> size;
+
+    std::vector<int> numbers(size);
+    std::cout << "Enter " << size << " elements separated by space: ";
+    for (int i = 0; i < size; ++i) {
+        std::cin >> numbers[i];
+    }
+
+    // Find minimum
+    int min_val = findMin(numbers);
+    std::cout << "Minimum: " << min_val << std::endl;
+
+    // Find maximum
+    int max_val = findMax(numbers);
+    std::cout << "Maximum: " << max_val << std::endl;
+
+    // Calculate sum
+    int sum_val = calculateSum(numbers);
+    std::cout << "Sum: " << sum_val << std::endl;
+
+    // Calculate average
+    double avg_val = static_cast<double>(sum_val) / numbers.size();
+    std::cout << "Average: " << avg_val << std::endl;
+
+    return 0;
+}
+//nvcc MinMAx.cu -o MinMAx
+// ./MinMAx

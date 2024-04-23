@@ -1,0 +1,58 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <chrono>
+#include <omp.h>
+
+// Parallel Bubble Sort
+void parallelBubbleSort(std::vector<int>& arr) {
+    int n = arr.size();
+    #pragma omp parallel for
+    for (int i = 0; i < n-1; ++i) {
+        #pragma omp parallel for
+        for (int j = 0; j < n-i-1; ++j) {
+            if (arr[j] > arr[j+1]) {
+                std::swap(arr[j], arr[j+1]);
+            }
+        }
+    }
+}
+
+int main() {
+    int n;
+    std::cout << "Enter the size of the array: ";
+    std::cin >> n;
+
+    std::vector<int> arr(n);
+    std::cout << "Enter " << n << " elements: ";
+    for (int i = 0; i < n; ++i) {
+        std::cin >> arr[i];
+    }
+
+    // Measure execution time for sequential bubble sort
+    auto start_seq = std::chrono::high_resolution_clock::now();
+    std::vector<int> seq_arr = arr; // Make a copy for sequential sorting
+    std::sort(seq_arr.begin(), seq_arr.end());
+    auto end_seq = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed_seconds_seq = end_seq - start_seq;
+
+    // Measure execution time for parallel bubble sort
+    auto start_parallel = std::chrono::high_resolution_clock::now();
+    std::vector<int> parallel_arr = arr; // Make a copy for parallel sorting
+    parallelBubbleSort(parallel_arr);
+    auto end_parallel = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed_seconds_parallel = end_parallel - start_parallel;
+
+    // Print sorted arrays
+    std::cout << "\nSorted array (Parallel Bubble Sort): ";
+    for (int i = 0; i < n; ++i) {
+        std::cout << parallel_arr[i] << " ";
+    }
+    std::cout << std::endl;
+
+    // Print execution time
+    std::cout << "Sequential Bubble Sort Time: " << elapsed_seconds_seq.count() << " milliseconds\n";
+    std::cout << "Parallel Bubble Sort Time: " << elapsed_seconds_parallel.count() << " milliseconds\n";
+
+    return 0;
+}
